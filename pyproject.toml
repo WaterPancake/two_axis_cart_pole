@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "two-axis-cart-pole"
+version = "0.1.0"
+description = "A two-axis (2-DoF) inverted pendulum on a cart, with classical controllers (bang-bang, energy swing-up, LQR) simulated in MuJoCo."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "WaterPancake" }]
+keywords = ["control", "lqr", "inverted-pendulum", "cart-pole", "mujoco", "robotics"]
+dependencies = [
+    "mujoco>=3.7,<4",
+    "numpy>=2.0,<3",
+    "scipy>=1.13,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+demo = [
+    "pillow>=10",
+]
+
+[project.urls]
+Homepage = "https://github.com/WaterPancake/two_axis_cart_pole"
+Writeup = "https://waterpancake.github.io/two_axis_cart_pole/"
+
+[tool.setuptools]
+packages = ["controllers", "envs"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
