@@ -12,7 +12,7 @@ from typing import Callable
 import mujoco
 import numpy as np
 
-from controllers import EnergySwingUp, LinearQuadraticRegulator
+from controllers import CoupledEnergySwingUp, HybridSwingUpLQR, LinearQuadraticRegulator
 from envs import TwoAxisInvertedPendulum
 
 
@@ -30,17 +30,13 @@ class ControllerResult:
 
     @property
     def final_physical_angle_rates(self) -> np.ndarray:
-        # In mk2.xml positive MuJoCo qpos[3] is negative physical y lean.
-        return np.array([self.final_obs[6], -self.final_obs[7]])
-
-
-def wrap_to_pi(angle: np.ndarray | float) -> np.ndarray | float:
-    return (angle + np.pi) % (2.0 * np.pi) - np.pi
+        canonical = CoupledEnergySwingUp.canonical_upright_state(self.final_obs)
+        return np.array([canonical[6], -canonical[7]])
 
 
 def physical_angles(obs: np.ndarray) -> np.ndarray:
-    wrapped = wrap_to_pi(obs[2:4])
-    return np.array([wrapped[0], -wrapped[1]])
+    canonical = CoupledEnergySwingUp.canonical_upright_state(obs)
+    return np.array([canonical[2], -canonical[3]])
 
 
 def actuator_gain(env: TwoAxisInvertedPendulum) -> float:
@@ -52,7 +48,7 @@ def make_lqr(env: TwoAxisInvertedPendulum) -> LinearQuadraticRegulator:
         dt=env.model.opt.timestep,
         input_gain=actuator_gain(env),
         mujoco_y_axis=True,
-        control_limit=1.0,
+        control_limit=0.8,
     )
 
 
@@ -121,9 +117,8 @@ def evaluate_lqr_stabilization(steps: int = 2_000) -> ControllerResult:
 def evaluate_energy_swingup_handoff(
     axis: str = "x",
     steps: int = 8_000,
-    lqr_threshold: float = 0.25,
 ) -> ControllerResult:
-    """Swing up one axis with EnergySwingUp, then hand off to LQR.
+    """Swing up one axis with coupled energy shaping, then hand off to LQR.
 
     The two-axis simultaneous swing-up is not robust yet, so this check isolates
     one axis while keeping the other upright.  That makes it useful for testing
@@ -140,24 +135,17 @@ def evaluate_energy_swingup_handoff(
         raise ValueError("axis must be 'x' or 'y'")
 
     lqr = make_lqr(env)
-    swing_up = EnergySwingUp(
-        k=5.0,
-        position_gain=0.2,
-        velocity_gain=0.4,
-        mujoco_y_axis=True,
-        control_limit=1.0,
-    )
+    swing_up = CoupledEnergySwingUp(input_gain=actuator_gain(env))
+    hybrid = HybridSwingUpLQR(swing_up, lqr)
     handoff_step: int | None = None
 
     def policy(obs: np.ndarray, step: int) -> np.ndarray:
         nonlocal handoff_step
 
-        if np.max(np.abs(physical_angles(obs))) < lqr_threshold:
-            if handoff_step is None:
-                handoff_step = step
-            return lqr.control(obs)
-
-        return swing_up.control(obs)
+        action = hybrid.control(obs)
+        if hybrid.mode == "lqr" and handoff_step is None:
+            handoff_step = step
+        return action
 
     max_pos = run_steps(env, steps, policy)
     obs = env.get_obs()

@@ -34,13 +34,21 @@
 
 
     <body name="cart" pos="0 0 0">
-      <joint axis="1 0 0" limited="true" name="x_slider" pos="0 0 0" range="-5 5" type="slide"/>
-      <joint axis="0 1 0" limited="true" name="y_slider" pos="0 0 0" range="-5 5" type="slide"/>
+      <joint axis="1 0 0" limited="true" name="x_slider" pos="0 0 0" range="-5 5"
+             type="slide" damping="0.4" armature="0.02" margin="0.2"
+             solreflimit="0.08 1" solimplimit="0.7 0.95 0.02 0.5 2"/>
+      <joint axis="0 1 0" limited="true" name="y_slider" pos="0 0 0" range="-5 5"
+             type="slide" damping="0.4" armature="0.02" margin="0.2"
+             solreflimit="0.08 1" solimplimit="0.7 0.95 0.02 0.5 2"/>
       <geom name="cart" pos="0 0 0" quat="0.707 0 0.707 0" size="0.1 0.1 0.1" type="box" mass="1"/>
 
       <body name="pole" pos="0 0 0">
-        <joint axis="0 1 0" limited="false" name="hinge_x" pos="0 0 0" type="hinge"/>
-        <joint axis="1 0 0" limited="false" name="hinge_y" pos="0 0 0" type="hinge"/>
+        <!-- Armature regularizes the universal-joint coordinate singularity
+             when hinge_y approaches +/- 90 degrees. -->
+        <joint axis="0 1 0" limited="false" name="hinge_x" pos="0 0 0"
+               type="hinge" damping="0.01" armature="0.005"/>
+        <joint axis="1 0 0" limited="false" name="hinge_y" pos="0 0 0"
+               type="hinge" damping="0.01" armature="0.005"/>
         <geom fromto="0 0 0 0 0 0.6" name="pole"  size="0.02" type="capsule" mass="1e-4"/>
 
         <geom name="mass" type="sphere" size="0.05" pos="0 0 0.6" mass="0.25"/>
