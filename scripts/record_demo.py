@@ -21,10 +21,9 @@ import argparse
 from pathlib import Path
 
 import mujoco
-import numpy as np
 from PIL import Image
 
-from controllers import EnergySwingUp, LinearQuadraticRegulator
+from controllers import CoupledEnergySwingUp, HybridSwingUpLQR, LinearQuadraticRegulator
 from envs import TwoAxisInvertedPendulum
 
 SCENARIOS = {
@@ -64,15 +63,6 @@ SCENARIOS = {
 }
 
 
-def wrap_to_pi(angle: np.ndarray) -> np.ndarray:
-    return (angle + np.pi) % (2.0 * np.pi) - np.pi
-
-
-def physical_angles(obs: np.ndarray) -> np.ndarray:
-    wrapped = wrap_to_pi(obs[2:4])
-    return np.array([wrapped[0], -wrapped[1]])
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Record a controller demo GIF.")
     parser.add_argument("--scenario", choices=tuple(SCENARIOS), default="swingup")
@@ -93,20 +83,17 @@ def main() -> None:
 
     env = TwoAxisInvertedPendulum()
     env.reset()
-    env.data.qpos[:] = cfg["qpos"]
-    env.data.qvel[:] = cfg["qvel"]
-    mujoco.mj_forward(env.model, env.data)
+    env.set_state(cfg["qpos"], cfg["qvel"])
 
-    lqr_threshold = 0.25  # radians (~15 degrees)
-    swing_up = EnergySwingUp(
-        k=5.0, position_gain=0.2, velocity_gain=0.4, mujoco_y_axis=True, control_limit=1.0
-    )
+    actuator_gain = float(abs(env.model.actuator_gear[0, 0])) or 1.0
+    swing_up = CoupledEnergySwingUp(input_gain=actuator_gain)
     lqr = LinearQuadraticRegulator(
         dt=env.model.opt.timestep,
-        input_gain=float(abs(env.model.actuator_gear[0, 0])) or 1.0,
+        input_gain=actuator_gain,
         mujoco_y_axis=True,
-        control_limit=1.0,
+        control_limit=0.8,
     )
+    hybrid = HybridSwingUpLQR(swing_up, lqr)
 
     timestep = env.model.opt.timestep
     total_steps = int(seconds / timestep)
@@ -124,11 +111,7 @@ def main() -> None:
     try:
         for step in range(total_steps):
             obs = env.get_obs()
-            if np.max(np.abs(physical_angles(obs))) < lqr_threshold:
-                u = lqr.control(obs)
-            else:
-                u = swing_up.control(obs)
-            env.control(u)
+            env.control(hybrid.control(obs))
 
             if step % render_every == 0:
                 if cfg["track_cart"]:

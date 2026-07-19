@@ -2,6 +2,16 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyre/
+.pytype/
+.tox/
+.nox/
+.coverage
+coverage.xml
+htmlcov/
 build/
 dist/
 
@@ -13,6 +23,15 @@ env/
 # OS / editor cruft
 .DS_Store
 
-# Local AI-tool / editor settings (machine-specific)
-.claude/settings.local.json
-.antigravitycli/
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# MuJoCo runtime log
+MUJOCO_LOG.TXT
+
+# Generated training outputs
+artifacts/
+
+# Generated documentation renders (Markdown sources are tracked)
+docs/pilco_*.html
+docs/pilco_*_files/

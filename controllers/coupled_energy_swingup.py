@@ -24,7 +24,10 @@ class CoupledEnergySwingUp:
         ell: float = 0.6,
         g: float = 9.81,
         energy_gain: float = 80.0,
-        angular_momentum_gain: float = 50.0,
+        # 100 collapses the precession mode (pole circling the vertical at the
+        # target energy) that the singular mk2 dynamics used to break up for
+        # free; see tests/test_model_regularity.py for the model change.
+        angular_momentum_gain: float = 100.0,
         position_gain: float = 2.0,
         velocity_gain: float = 4.0,
         input_gain: float = 1.0,

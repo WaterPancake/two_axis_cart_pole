@@ -9,7 +9,6 @@ import argparse
 from dataclasses import dataclass
 from typing import Callable
 
-import mujoco
 import numpy as np
 
 from controllers import CoupledEnergySwingUp, HybridSwingUpLQR, LinearQuadraticRegulator
@@ -58,9 +57,7 @@ def set_state(
     qvel: list[float],
 ) -> None:
     env.reset()
-    env.data.qpos[:] = qpos
-    env.data.qvel[:] = qvel
-    mujoco.mj_forward(env.model, env.data)
+    env.set_state(np.asarray(qpos, dtype=float), np.asarray(qvel, dtype=float))
 
 
 def run_steps(
@@ -129,7 +126,7 @@ def evaluate_energy_swingup_handoff(
     if axis == "x":
         set_state(env, qpos=[0.0, 0.0, 2.8, 0.0], qvel=[0.0, 0.0, 0.5, 0.0])
     elif axis == "y":
-        # qpos[3] has the opposite sign from the physical y lean in mk2.xml.
+        # qpos[3] has the opposite sign from the physical y lean (mk-series chart).
         set_state(env, qpos=[0.0, 0.0, 0.0, -2.8], qvel=[0.0, 0.0, 0.0, -0.5])
     else:
         raise ValueError("axis must be 'x' or 'y'")

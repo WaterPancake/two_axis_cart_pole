@@ -1,4 +1,4 @@
-"""Regression tests for coupled recovery after sustained manual input."""
+"""Regression tests for the algorithmic swing-up and LQR controllers."""
 
 from __future__ import annotations
 
@@ -11,18 +11,12 @@ from controllers import (
     CoupledEnergySwingUp,
     HybridSwingUpLQR,
     LinearQuadraticRegulator,
-    RailAwareManualController,
 )
 from envs import TwoAxisInvertedPendulum
 
 
-def physical_angles(state: np.ndarray) -> np.ndarray:
-    canonical = CoupledEnergySwingUp.canonical_upright_state(state)
-    return np.array([canonical[2], -canonical[3]])
-
-
 class ControllerSafetyTest(unittest.TestCase):
-    def make_controllers(self, env: TwoAxisInvertedPendulum):
+    def make_hybrid(self, env: TwoAxisInvertedPendulum) -> HybridSwingUpLQR:
         gain = float(abs(env.model.actuator_gear[0, 0])) or 1.0
         swing_up = CoupledEnergySwingUp(input_gain=gain)
         lqr = LinearQuadraticRegulator(
@@ -31,7 +25,7 @@ class ControllerSafetyTest(unittest.TestCase):
             mujoco_y_axis=True,
             control_limit=0.8,
         )
-        return RailAwareManualController(gain), HybridSwingUpLQR(swing_up, lqr)
+        return HybridSwingUpLQR(swing_up, lqr)
 
     def assert_no_warnings(self, env: TwoAxisInvertedPendulum) -> None:
         self.assertFalse(
@@ -39,55 +33,32 @@ class ControllerSafetyTest(unittest.TestCase):
             "MuJoCo emitted a numerical warning",
         )
 
-    def apply_manual_schedule(
-        self,
-        env: TwoAxisInvertedPendulum,
-        manual: RailAwareManualController,
-        schedule: list[tuple[float, list[float]]],
-    ) -> float:
-        dt = float(env.model.opt.timestep)
-        max_position = 0.0
-        for duration, direction in schedule:
-            for _ in range(round(duration / dt)):
-                env.control(manual.control(env.get_obs(), np.asarray(direction)))
-                max_position = max(max_position, float(np.max(np.abs(env.data.qpos[0:2]))))
-        return max_position
-
-    def run_until_settled(
-        self,
-        env: TwoAxisInvertedPendulum,
-        hybrid: HybridSwingUpLQR,
-        timeout: float,
-    ) -> tuple[bool, float]:
-        dt = float(env.model.opt.timestep)
-        max_position = 0.0
-        for _ in range(round(timeout / dt)):
-            env.control(hybrid.control(env.get_obs()))
-            state = env.get_obs()
-            max_position = max(max_position, float(np.max(np.abs(state[0:2]))))
-            if (
-                hybrid.mode == "lqr"
-                and np.max(np.abs(physical_angles(state))) < 0.05
-                and np.max(np.abs(state[4:8])) < 0.1
-                and np.max(np.abs(state[0:2])) < 0.1
-            ):
-                return True, max_position
-        return False, max_position
-
-    def test_pole_mass_matrix_is_regularized_at_coordinate_singularity(self) -> None:
+    def test_dynamics_stay_regular_at_former_coordinate_singularity(self) -> None:
+        """mk2's universal joint was singular at ty = +/- pi/2 (pole parallel
+        to the ground): coordinate rates and the armature energy stored in
+        them blew up there. The ball-joint model must sail through the same
+        configuration with bounded, physical angular velocity and without
+        numerical warnings."""
         env = TwoAxisInvertedPendulum()
-        env.data.qpos[:] = [0.0, 0.0, 0.7, np.pi / 2.0]
-        mujoco.mj_forward(env.model, env.data)
-        mass_matrix = np.empty((env.model.nv, env.model.nv))
-        mujoco.mj_fullM(env.model, env.data, mass_matrix)
-        self.assertLess(np.linalg.cond(mass_matrix), 300.0)
-        self.assertGreater(np.min(np.linalg.eigvalsh(mass_matrix)), 0.005)
+        # Exactly on the former singular surface, with transverse motion that
+        # the universal-joint chart could only represent with unbounded rates.
+        env.set_state(
+            np.array([0.0, 0.0, 0.7, np.pi / 2.0]),
+            np.array([0.0, 0.0, 1.0, 1.0]),
+        )
+        for _ in range(2000):
+            env.control(np.zeros(2))
+        self.assert_no_warnings(env)
+        # |omega| is bounded by total energy: E ~ mgl + KE0 gives |omega| < 10.
+        pole_omega = env.data.qvel[2:]
+        self.assertLess(float(np.max(np.abs(pole_omega))), 10.0)
 
     def test_coupled_kinematics_matches_mujoco_tip_sensor(self) -> None:
         env = TwoAxisInvertedPendulum()
-        env.data.qpos[:] = [0.2, -0.3, 0.7, -1.1]
-        env.data.qvel[:] = [0.4, -0.2, 1.3, -0.8]
-        mujoco.mj_forward(env.model, env.data)
+        env.set_state(
+            np.array([0.2, -0.3, 0.7, -1.1]),
+            np.array([0.4, -0.2, 1.3, -0.8]),
+        )
         direction, direction_rate = CoupledEnergySwingUp.pole_direction_and_rate(env.get_obs())
 
         site_id = mujoco.mj_name2id(env.model, mujoco.mjtObj.mjOBJ_SITE, "mass_site")
@@ -103,18 +74,6 @@ class ControllerSafetyTest(unittest.TestCase):
         np.testing.assert_allclose(direction, measured_direction, atol=1e-10)
         np.testing.assert_allclose(direction_rate, measured_rate, atol=1e-10)
 
-    def test_manual_force_is_normalized_and_brakes_before_rail(self) -> None:
-        env = TwoAxisInvertedPendulum()
-        manual, _ = self.make_controllers(env)
-        centered = env.get_obs()
-        diagonal_force = manual.physical_force(centered, np.array([1.0, 1.0]))
-        self.assertAlmostEqual(float(np.linalg.norm(diagonal_force)), 3.0)
-
-        near_rail = centered.copy()
-        near_rail[0] = 4.5
-        near_rail[4] = 2.0
-        self.assertLess(manual.physical_force(near_rail, np.array([1.0, 0.0]))[0], 0.0)
-
     def test_environment_clamps_actions_and_rejects_non_finite_input(self) -> None:
         env = TwoAxisInvertedPendulum()
         applied = env.control(np.array([100.0, -100.0]))
@@ -124,7 +83,7 @@ class ControllerSafetyTest(unittest.TestCase):
 
     def test_handoff_rejects_high_rate_and_uses_hysteresis(self) -> None:
         env = TwoAxisInvertedPendulum()
-        _, hybrid = self.make_controllers(env)
+        hybrid = self.make_hybrid(env)
         high_rate = np.array([0.0, 0.0, 0.1, -0.1, 0.0, 0.0, 5.0, -5.0])
         hybrid.control(high_rate)
         self.assertEqual(hybrid.mode, "swing-up")
@@ -152,80 +111,7 @@ class ControllerSafetyTest(unittest.TestCase):
         np.testing.assert_allclose(canonical[2:4], 0.0, atol=1e-12)
 
         env = TwoAxisInvertedPendulum()
-        _, hybrid = self.make_controllers(env)
+        hybrid = self.make_hybrid(env)
         for _ in range(hybrid.capture_steps):
             hybrid.control(equivalent_upright)
         self.assertEqual(hybrid.mode, "lqr")
-
-    def test_sustained_and_coupled_manual_inputs_recover_without_runaway(self) -> None:
-        scenarios = {
-            "two-second-diagonal": [(2.0, [1.0, 1.0])],
-            "eight-second-diagonal": [(8.0, [1.0, 1.0])],
-            "diagonal-reversal": [(1.0, [1.0, 1.0]), (1.0, [-1.0, -1.0])],
-            "aggressive-circle": [
-                (2.0, [1.0, 0.0]),
-                (2.0, [0.0, 1.0]),
-                (2.0, [-1.0, 0.0]),
-                (2.0, [0.0, -1.0]),
-            ],
-        }
-        for name, schedule in scenarios.items():
-            with self.subTest(name=name):
-                env = TwoAxisInvertedPendulum()
-                env.reset()
-                manual, hybrid = self.make_controllers(env)
-                hybrid.reset("lqr")
-                manual_max = self.apply_manual_schedule(env, manual, schedule)
-                settled, recovery_max = self.run_until_settled(env, hybrid, timeout=40.0)
-                self.assertTrue(settled)
-                self.assertLess(max(manual_max, recovery_max), 4.95)
-                self.assert_no_warnings(env)
-
-    def test_manual_autonomy_cycle_can_repeat(self) -> None:
-        env = TwoAxisInvertedPendulum()
-        env.reset()
-        manual, hybrid = self.make_controllers(env)
-        hybrid.reset("lqr")
-        schedules = [
-            [(0.5, [1.0, 1.0])],
-            [(1.0, [-1.0, 0.0]), (1.0, [0.0, 1.0])],
-            [(1.0, [1.0, -1.0])],
-        ]
-        for cycle, schedule in enumerate(schedules):
-            with self.subTest(cycle=cycle):
-                self.apply_manual_schedule(env, manual, schedule)
-                settled, max_position = self.run_until_settled(env, hybrid, timeout=25.0)
-                self.assertTrue(settled)
-                self.assertLess(max_position, 4.95)
-                self.assert_no_warnings(env)
-
-    def test_seeded_manual_stress_cases_recover(self) -> None:
-        rng = np.random.default_rng(20260629)
-        directions = np.array(
-            [
-                [1.0, 0.0],
-                [-1.0, 0.0],
-                [0.0, 1.0],
-                [0.0, -1.0],
-                [1.0, 1.0],
-                [1.0, -1.0],
-                [-1.0, 1.0],
-                [-1.0, -1.0],
-            ]
-        )
-        for case in range(12):
-            with self.subTest(case=case):
-                env = TwoAxisInvertedPendulum()
-                env.reset()
-                manual, hybrid = self.make_controllers(env)
-                hybrid.reset("lqr")
-                schedule = []
-                for _ in range(int(rng.integers(1, 5))):
-                    direction = directions[int(rng.integers(len(directions)))].tolist()
-                    schedule.append((float(rng.uniform(0.2, 3.0)), direction))
-
-                manual_max = self.apply_manual_schedule(env, manual, schedule)
-                settled, recovery_max = self.run_until_settled(env, hybrid, timeout=30.0)
-                self.assertTrue(settled)
-                self.assertLess(max(manual_max, recovery_max), 4.95)
-                self.assert_no_warnings(env)

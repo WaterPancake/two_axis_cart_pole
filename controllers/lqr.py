@@ -117,8 +117,8 @@ class LinearQuadraticRegulator:
         """Returns the LQR action for the current state.
 
         If ``mujoco_y_axis`` is true, the y-axis pole angle/velocity are
-        negated before feedback.  In ``assets/mk2.xml`` the y hinge axis is
-        ``1 0 0``, so positive MuJoCo joint position leans the pole in the
+        negated before feedback.  The mk-series models measure ``theta_y``
+        about the ``1 0 0`` axis, so a positive angle leans the pole in the
         negative-y direction, opposite the convention used in the writeup.
         """
         state = np.asarray(cur_state, dtype=float).copy()

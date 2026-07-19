@@ -6,9 +6,9 @@
 
 A two-degree-of-freedom extension of the canonical cart-pole: a cart that moves
 in the **x–y plane** balancing an inverted pendulum that is free to fall in
-**any direction**. The repo implements and compares three classical controllers
-— bang-bang, energy-based swing-up, and an LQR — on the full 8-state nonlinear
-system, simulated in [MuJoCo](https://mujoco.org/).
+**any direction**. The repo implements and compares three controller approaches
+— algorithmic energy swing-up, LQR, and a PILCO-inspired learner — on the full
+8-state nonlinear system, simulated in [MuJoCo](https://mujoco.org/).
 
 <p align="center">
   <img src="demo_extreme.gif" alt="Energy swing-up handing off to LQR balance" width="600">
@@ -41,10 +41,9 @@ $$\mathbf{u} = \left[\, F_x,\; F_y \,\right]^\top$$
 
 | Controller | File | Idea |
 | --- | --- | --- |
-| **Bang-bang** | `controllers/bang_bang.py` | Full-force toward upright once the lean angle exceeds a threshold. Simplest baseline. |
-| **Energy swing-up** | `controllers/energy_swingup.py` | Pumps energy toward the upright equilibrium via $F = k\,\Delta E\,\cos\theta\,\dot\theta$ ([Åström & Furuta, 2000](https://www.sciencedirect.com/science/article/abs/pii/S0005109899001405)); each axis treated independently. |
 | **LQR** | `controllers/lqr.py` | Stabilizes the upright equilibrium using the small-angle linearization, solving the continuous- or discrete-time algebraic Riccati equation. |
-| **Hybrid** | `scripts/run_hybrid_controller.py` | Energy swing-up that hands off to LQR once both poles are within ~15° of upright. |
+| **Algorithmic swing-up + LQR** | `controllers/coupled_energy_swingup.py`, `controllers/hybrid.py` | Shapes the pole's 3D energy, then hands off to LQR inside a guarded capture region. |
+| **PILCO-style learned policy** | `controllers/pilco.py` | GP dynamics model + RBF policy optimized by model rollouts; see the [PILCO foundations lab](docs/pilco_foundations_lab.md). |
 
 ## Installation
 
@@ -68,11 +67,29 @@ python scripts/run_viewer.py --viewer interactive
 
 # Run the headless controller checks (no viewer)
 python scripts/evaluate_controllers.py --case all
+
+# Smoke-train and evaluate the PILCO-style learned controller
+python scripts/train_pilco_controller.py --smoke --output artifacts/pilco_smoke.npz
+python scripts/evaluate_pilco_controller.py --artifact artifacts/pilco_smoke.npz --assert-finite
 ```
 
 > **macOS:** the MuJoCo viewer must be launched with `mjpython` instead of
 > `python` (e.g. `mjpython scripts/run_hybrid_controller.py`). Headless scripts
 > such as `evaluate_controllers.py` run under plain `python`.
+
+## PILCO-style learned controller
+
+The learned-controller workflow is intentionally dependency-light: it fits a
+Gaussian-process model of one-step state deltas, optimizes a squashed RBF policy
+with many cheap rollouts inside that model, then saves the policy/model to an
+`.npz` artifact. Evaluation runs that learned policy directly, without LQR or
+algorithmic recovery hidden inside it.
+
+Read the [PILCO foundations lab](docs/pilco_foundations_lab.md) for theory and
+first principles, then use the [PILCO implementation lab](docs/pilco_code_lab.md)
+for runnable training, evaluation, and debugging exercises. Training outputs
+live under the ignored `artifacts/` directory and should be passed explicitly
+to evaluation and rendering commands.
 
 ## Results
 
@@ -81,9 +98,8 @@ Reproduce with `python scripts/evaluate_controllers.py --case all`.
 | Scenario | Result | Notes |
 | --- | --- | --- |
 | **LQR stabilization** from a 0.05 rad perturbation | ✅ converges | settles to < 0.001 rad; max cart excursion 0.06 m |
-| **Energy swing-up + LQR handoff (x-axis)** from near-hanging (~160°) | ✅ swings up & balances | hands off to LQR at ~1.86 s; max cart excursion 2.2 m |
-| **Energy swing-up + LQR handoff (y-axis)** from near-hanging (~160°) | ✅ swings up & balances | symmetric to the x-axis case |
-
+| **Coupled swing-up + LQR handoff (x-axis)** from near-hanging (~160°) | ✅ swings up & balances | hands off to LQR at ~1.70 s; max cart excursion 2.15 m |
+| **Coupled swing-up + LQR handoff (y-axis)** from near-hanging (~160°) | ✅ swings up & balances | symmetric to the x-axis case |
 
 ## Writeup
 
@@ -93,13 +109,12 @@ LQR is published [here](https://waterpancake.github.io/two_axis_cart_pole/)
 
 ## Limitations & future work
 
-- **Simultaneous two-axis swing-up is not yet robust** — the evaluation isolates
-  one axis at a time. Coupled two-axis swing-up is the main open problem.
-- The energy swing-up treats the two axes independently and ignores their
-  coupling through the cart.
-- Possible extensions: a region-of-attraction study for the LQR, a
-  Gymnasium-compatible environment, and a learned (RL) policy benchmarked
-  against the LQR baseline.
+- The coupled controller is an energy-shaping heuristic rather than a formally
+  verified region-of-attraction controller.
+- Fixed learned-controller scenarios do not establish broad random-start
+  robustness.
+- Possible extensions include a formal region-of-attraction study and broader
+  learned-controller evaluation.
 
 ## Acknowledgments
 

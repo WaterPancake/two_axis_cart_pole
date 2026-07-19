@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "two-axis-cart-pole"
 version = "0.1.0"
-description = "A two-axis (2-DoF) inverted pendulum on a cart, with classical controllers (bang-bang, energy swing-up, LQR) simulated in MuJoCo."
+description = "A two-axis inverted pendulum with LQR, algorithmic swing-up, and a PILCO-inspired learned controller in MuJoCo."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
