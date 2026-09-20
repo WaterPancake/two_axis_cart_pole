@@ -95,11 +95,9 @@ window.Quarto = {
 </header>
 
 
-<section id="environement" class="level2">
-<h2 class="anchored" data-anchor-id="environement">Environement</h2>
-<section id="modeling" class="level3">
-<h3 class="anchored" data-anchor-id="modeling">Modeling</h3>
-<p>A frame of the system can be expressed as: <span class="math inline">\(\textbf{x} = \left[ x, y, \theta_x, \theta_y, \dot{x}, \dot y, \dot{\theta_x}, \dot{\theta_y} \right]\)</span></p>
+<section id="environment" class="level2">
+<h2 class="anchored" data-anchor-id="environment">Environment</h2>
+<p>A state of the system can be expressed as: <span class="math inline">\(\textbf{x} = \left[ x, y, \theta_x, \theta_y, \dot{x}, \dot y, \dot{\theta}_x, \dot{\theta}_y \right]\)</span></p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 31%">
@@ -118,151 +116,189 @@ window.Quarto = {
 <tbody>
 <tr class="odd">
 <td><span class="math inline">\(x\)</span></td>
-<td>carts position along x-axis</td>
-<td>-2</td>
-<td>2</td>
+<td>cart position along the x-axis</td>
+<td>-10</td>
+<td>10</td>
 </tr>
 <tr class="even">
 <td><span class="math inline">\(y\)</span></td>
-<td>carts position along y-axis</td>
-<td>-2</td>
-<td>2</td>
+<td>cart position along the y-axis</td>
+<td>-10</td>
+<td>10</td>
 </tr>
 <tr class="odd">
 <td><span class="math inline">\(\theta_x\)</span></td>
-<td>poles angle along the x axis about the cart in radians</td>
-<td><span class="math inline">\(0\)</span></td>
-<td><span class="math inline">\(2\pi\)</span></td>
+<td>pole tilt toward <span class="math inline">\(\pm x\)</span> (rotation about the y-axis), in radians</td>
+<td><span class="math inline">\(-\pi\)</span></td>
+<td><span class="math inline">\(\pi\)</span></td>
 </tr>
 <tr class="even">
 <td><span class="math inline">\(\theta_y\)</span></td>
-<td>poles angle along the y axis about the cart in radian</td>
-<td><span class="math inline">\(0\)</span></td>
-<td><span class="math inline">\(2\pi\)</span></td>
+<td>pole tilt toward <span class="math inline">\(\pm y\)</span> (rotation about the x-axis), in radians</td>
+<td><span class="math inline">\(-\pi/2\)</span></td>
+<td><span class="math inline">\(\pi/2\)</span></td>
 </tr>
 <tr class="odd">
 <td><span class="math inline">\(\dot x\)</span></td>
-<td>be the linear velocity of cart along x-axis</td>
+<td>linear velocity of the cart along the x-axis</td>
 <td><span class="math inline">\(-\infty\)</span></td>
 <td><span class="math inline">\(\infty\)</span></td>
 </tr>
 <tr class="even">
 <td><span class="math inline">\(\dot y\)</span></td>
-<td>be then linear velocity of cart along y-axis</td>
+<td>linear velocity of the cart along the y-axis</td>
 <td><span class="math inline">\(-\infty\)</span></td>
 <td><span class="math inline">\(\infty\)</span></td>
 </tr>
 <tr class="odd">
 <td><span class="math inline">\(\dot \theta_x\)</span></td>
-<td>the angular velocity of the pole along the x axis about the cart</td>
+<td>angular velocity of the pole about the y-axis</td>
 <td><span class="math inline">\(-\infty\)</span></td>
 <td><span class="math inline">\(\infty\)</span></td>
 </tr>
 <tr class="even">
 <td><span class="math inline">\(\dot \theta_y\)</span></td>
-<td>the angular velocity of the pole along the y axis about the car</td>
+<td>angular velocity of the pole about the x-axis</td>
 <td><span class="math inline">\(-\infty\)</span></td>
 <td><span class="math inline">\(\infty\)</span></td>
 </tr>
 </tbody>
 </table>
-</section>
-<section id="kinematrics" class="level3">
-<h3 class="anchored" data-anchor-id="kinematrics">Kinematrics</h3>
-<p>The position and velocity of of the mass at the end of the pendulum can be obtained as follow:</p>
+<p>The two angles are a chart of the sphere. The chart is singular when the pole points along <span class="math inline">\(\pm y\)</span>, so <span class="math inline">\(\theta_y\)</span> stays in <span class="math inline">\([-\pi/2, \pi/2]\)</span> and <span class="math inline">\(\theta_x\)</span> stays in <span class="math inline">\((-\pi, \pi]\)</span>.</p>
+<section id="kinematics" class="level3">
+<h3 class="anchored" data-anchor-id="kinematics">Kinematics</h3>
+<p>The pole is a massless rod of length <span class="math inline">\(\ell\)</span> with a point mass <span class="math inline">\(m_p\)</span> at the tip. Let <span class="math inline">\(\textbf{p}\)</span> be the unit vector along the pole. This page uses the sign convention of the controllers: a positive <span class="math inline">\(\theta_x\)</span> moves the tip in the <span class="math inline">\(+x\)</span> direction, and a positive <span class="math inline">\(\theta_y\)</span> moves the tip in the <span class="math inline">\(+y\)</span> direction.</p>
+<p><span class="math display">\[\textbf{p} = \begin{bmatrix} \sin\theta_x\cos\theta_y \\ \sin\theta_y \\ \cos\theta_x\cos\theta_y \end{bmatrix}, \qquad \lVert \textbf{p} \rVert_2 = 1\]</span></p>
+<p>With this chart, the position and velocity of the mass at the end of the pendulum are:</p>
 <p><span class="math display">\[\textbf{x}_{p} = \begin{bmatrix} x_p \\ y_p \\ z_p \end{bmatrix} =
 \begin{bmatrix}
-x_c + \ell\sin(\theta_x) \\
-y_c + \ell\sin(\theta_y) \\
-\ell\cos(\theta_x)\cos(\theta_y)
+x_c + \ell\sin\theta_x\cos\theta_y \\
+y_c + \ell\sin\theta_y \\
+\ell\cos\theta_x\cos\theta_y
 \end{bmatrix}\]</span></p>
 <p><span class="math display">\[\dot{\textbf{x}}_{p} = \begin{bmatrix} \dot x_p \\ \dot y_p \\ \dot z_p
 \end{bmatrix}
 = \begin{bmatrix}
-\dot x_c + \ell \cos(\theta_x) \dot \theta_x \\
-\dot y_c + \ell \cos(\theta_y) \dot \theta_y \\
--\ell \sin{(\theta_x)}\cos{(\theta_y)} \dot\theta_x - \ell \sin{(\theta_y)}\cos{(\theta_x)} \dot \theta_y
+\dot x_c + \ell \left( \cos\theta_x\cos\theta_y\,\dot \theta_x - \sin\theta_x\sin\theta_y\,\dot \theta_y \right) \\
+\dot y_c + \ell \cos\theta_y\,\dot \theta_y \\
+-\ell \left( \sin\theta_x\cos\theta_y\,\dot\theta_x + \cos\theta_x\sin\theta_y\,\dot \theta_y \right)
 \end{bmatrix}\]</span></p>
+<p>The tip stays at distance <span class="math inline">\(\ell\)</span> from the pivot. This identity shows that the chart above is rigid:</p>
+<p><span class="math display">\[(x_p - x_c)^2 + (y_p - y_c)^2 + z_p^2 = \ell^2\]</span></p>
+<p>The mk-series MuJoCo models measure <span class="math inline">\(\theta_y\)</span> about the <span class="math inline">\(+x\)</span> axis. A positive MuJoCo angle moves the tip in the <span class="math inline">\(-y\)</span> direction, which is opposite to the convention on this page. The controller boundary therefore flips the sign of <span class="math inline">\(\theta_y\)</span> and <span class="math inline">\(\dot\theta_y\)</span> (see <code>controllers/lqr.py</code> and <code>envs/mujoco_interface.py</code>).</p>
 </section>
 <section id="lagrangian" class="level3">
 <h3 class="anchored" data-anchor-id="lagrangian">Lagrangian</h3>
-<p>The first step in creating an LQR controller is the linearize the systems equation of motions about a fixed point. We can calculate these equations using the Lagrangian which state that, <span class="math display">\[L = T - V\]</span> where <span class="math inline">\(T\)</span> and <span class="math inline">\(V\)</span> represent the kinetic and potential energy of the system respectively, obtaining:</p>
+<p>The first step in the LQR design is to linearize the equations of motion about a fixed point. We can calculate these equations using the Lagrangian, which states that, <span class="math display">\[L = T - V\]</span> where <span class="math inline">\(T\)</span> and <span class="math inline">\(V\)</span> represent the kinetic and potential energy of the system respectively, obtaining:</p>
 <ul>
 <li><h4 id="kinetic-energy" class="anchored">Kinetic Energy</h4>
-<p>Applying the equation for Kinetic Energy (<span class="math inline">\(KE = \frac{1}{2}mv^2\)</span>) yields: <span class="math display">\[T_p = \frac{1}{2} m_p(\dot x_p^2 + \dot y_p^2 + \dot z_p^2)\]</span> <span class="math display">\[T_c = \frac{1}{2} m_c(\dot x_c^2 + \dot y_c^2)\]</span> We must also consider the angular movement or rotational kinetic energy of the pole in our equation (<span class="math inline">\(KE = \frac{1}{2} I \omega^2\)</span>): <span class="math display">\[T_{r} = \frac{1}{2} I (\dot \theta_x^2 + \dot\theta_y^2)\]</span> where <span class="math inline">\(I = m_p \ell^2\)</span> represents the moment of inertia of the pendulum mass. Thus the total kinetic energy defined as: <span class="math display">\[T = T_p + T_c + T_{r}\]</span></p></li>
-<li><h4 id="potential-energy" class="anchored">Potential Energy</h4>
-<p>The potential energy of the effect of graviety on the pendulum mass (<span class="math inline">\(V = mgh)\)</span> is the only source considered (energy of the cart is not considered).</p></li>
+Applying the equation for Kinetic Energy (<span class="math inline">\(KE = \frac{1}{2}mv^2\)</span>) yields: <span class="math display">\[T_p = \frac{1}{2} m_p(\dot x_p^2 + \dot y_p^2 + \dot z_p^2)\]</span> <span class="math display">\[T_c = \frac{1}{2} m_c(\dot x_c^2 + \dot y_c^2)\]</span> <span class="math display">\[T = T_p + T_c\]</span></li>
 </ul>
-<p><span class="math display">\[V = m_p g \ell \cos(\theta_x) \cos(\theta_y) \]</span></p>
+<p>The point mass turns with the pole, so <span class="math inline">\(T_p\)</span> already contains the rotational kinetic energy. Do not add a second term of the form <span class="math inline">\(\frac{1}{2}I(\dot\theta_x^2+\dot\theta_y^2)\)</span> with <span class="math inline">\(I = m_p\ell^2\)</span>. That term would count the same inertia two times.</p>
+<p>Substitution of <span class="math inline">\(\dot{\textbf{x}}_p\)</span> into <span class="math inline">\(T_p\)</span> gives the exact kinetic energy:</p>
+<p><span class="math display">\[T = \frac{1}{2}(m_c+m_p)\left(\dot x_c^2+\dot y_c^2\right) + m_p\ell\left[\dot x_c\left(\cos\theta_x\cos\theta_y\,\dot\theta_x - \sin\theta_x\sin\theta_y\,\dot\theta_y\right) + \dot y_c\cos\theta_y\,\dot\theta_y\right] + \frac{1}{2}m_p\ell^2\left(\cos^2\theta_y\,\dot\theta_x^2 + \dot\theta_y^2\right)\]</span></p>
+<p>The last term is the rotational part. At small angles it reduces to <span class="math inline">\(\frac{1}{2}m_p\ell^2(\dot\theta_x^2 + \dot\theta_y^2)\)</span>.</p>
+<ul>
+<li><h4 id="potential-energy" class="anchored">Potential Energy</h4>
+The potential energy of the effect of gravity on the pendulum mass (<span class="math inline">\(V = mgh\)</span>) is the only source considered (energy of the cart is not considered). We take the pivot height as the zero level, so</li>
+</ul>
+<p><span class="math display">\[V = m_p g z_p = m_p g \ell \cos(\theta_x) \cos(\theta_y) \]</span></p>
 <ul>
 <li><h4 id="full-equations" class="anchored">Full Equations</h4>
-<span class="math display">\[L =\frac{1}{2} \left(m_p (\dot x_p^2 + \dot y_p^2 + \dot z_p^2) + I (\dot \theta_x^2 + \dot \theta_y^2) + m_c (\dot x_c^2 + \dot y_c^2)  \right) - m_p g \ell \cos(\theta_x) \cos(\theta_y) \]</span></li>
+<span class="math display">\[L =\frac{1}{2}(m_c+m_p)\left(\dot x_c^2+\dot y_c^2\right) + m_p\ell\left[\dot x_c\left(\cos\theta_x\cos\theta_y\,\dot\theta_x - \sin\theta_x\sin\theta_y\,\dot\theta_y\right) + \dot y_c\cos\theta_y\,\dot\theta_y\right] + \frac{1}{2}m_p\ell^2\left(\cos^2\theta_y\,\dot\theta_x^2 + \dot\theta_y^2\right) - m_p g \ell \cos(\theta_x) \cos(\theta_y) \]</span></li>
 </ul>
 </section>
 <section id="equations-of-motion" class="level3">
 <h3 class="anchored" data-anchor-id="equations-of-motion">Equations of Motion</h3>
-<p>Using the methods of Legrange, we can write the equation of motion using generalized cordinates. The dynamics equations (<span class="math inline">\(Q_i\)</span>) for the generalized coordinates (<span class="math inline">\(q_i\)</span>) is obtained from the equation: <span class="math display">\[\frac{d}{dt}\left(\frac{\partial L}{\partial \dot q_i}\right) - \frac{\partial L}{\partial q_i} = Q_i\]</span> In this system, the generalized coordinates choosen will be <span class="math inline">\(q =\left[x_c , y_c,  \theta_x,  \theta_y \right]\)</span>. Since there are variables in <span class="math inline">\(L\)</span> that are not in <span class="math inline">\(q\)</span>, subsituting them for their equivalent to contain only values from <span class="math inline">\(q\)</span> reveals:</p>
-<p><span class="math display">\[L = \frac{1}{2}\left( m_p\left[ \left(\dot x_c + \ell\cos(\theta_x)\dot \theta_x\right)^2 + \left(\dot y_c +\ell\cos(\theta_y)\dot\theta_y \right)^2 + \left(-\ell \sin{(\theta_x)}\cos{(\theta_y)} \dot\theta_x - \ell \sin{(\theta_y)}\cos{(\theta_x)} \dot \theta_y\right)^2\right] + I(\dot\theta_x^2 + \dot\theta_y^2)  + m_c(\dot x_c^2 +\dot y_c^2)\right) -m_p g\ell\cos(\theta_x)\cos(\theta_y)\]</span></p>
-<p>The followin is the grueling process of deriving all of the equations of motions and subsitution to contain only generalized cordinates and constants.</p>
+<p>Using the methods of Lagrange, we can write the equation of motion using generalized coordinates. The dynamics equations (<span class="math inline">\(Q_i\)</span>) for the generalized coordinates (<span class="math inline">\(q_i\)</span>) are obtained from the equation: <span class="math display">\[\frac{d}{dt}\left(\frac{\partial L}{\partial \dot q_i}\right) - \frac{\partial L}{\partial q_i} = Q_i\]</span> In this system, the generalized coordinates chosen will be <span class="math inline">\(q =\left[x_c , y_c,  \theta_x,  \theta_y \right]\)</span>, and the generalized forces will be <span class="math inline">\(Q =\left[F_x , F_y,  0,  0 \right]\)</span>. There are no torques on the pole; the cart forces are the only inputs.</p>
+<p>The partial derivatives below are exact for the Lagrangian above.</p>
 <ul>
 <li><h4 id="x_c" class="anchored"><span class="math inline">\(x_c\)</span></h4>
 <ul>
-<li><p><span class="math inline">\(\frac{\partial L}{\partial \dot x_c}\)</span> <span class="math display">\[\boxed{\dot x_c(m_c + m_p) + m_p \ell \cos(\theta_x)\dot \theta_x}\]</span></p></li>
-<li><p><span class="math inline">\(\frac{d}{dt} \left( \frac{\partial L}{\partial \dot x_c}\right)\)</span> <span class="math display">\[\boxed{\ddot x_c( m_c + m_p)+ m_p \ell \left(\cos(\theta_x)\ddot \theta_x - \sin(\theta_x)\dot \theta_x^2 \right)}\]</span></p></li>
+<li><p><span class="math inline">\(\frac{\partial L}{\partial \dot x_c}\)</span> <span class="math display">\[\boxed{(m_c + m_p)\dot x_c + m_p \ell \left(\cos\theta_x\cos\theta_y\,\dot \theta_x - \sin\theta_x\sin\theta_y\,\dot \theta_y\right)}\]</span></p></li>
+<li><p><span class="math inline">\(\frac{d}{dt} \left( \frac{\partial L}{\partial \dot x_c}\right)\)</span> <span class="math display">\[\boxed{(m_c + m_p)\ddot x_c + m_p \ell \left(\cos\theta_x\cos\theta_y\,\ddot \theta_x - \sin\theta_x\sin\theta_y\,\ddot \theta_y - \sin\theta_x\cos\theta_y\left(\dot\theta_x^2+\dot\theta_y^2\right) - 2\cos\theta_x\sin\theta_y\,\dot\theta_x\dot\theta_y\right)}\]</span></p></li>
 <li><p><span class="math inline">\(\frac{\partial L}{\partial x_c}\)</span> <span class="math display">\[\boxed{0}\]</span></p></li>
-<li><p><span class="math inline">\(F_x\)</span> <span class="math display">\[\boxed{F_x = \ddot x_c(m_c+m_p) + m_p\ell\left(\cos(\theta_x)\ddot \theta_x-\sin(\theta_x)\dot \theta_x^2 \right)}\]</span></p></li>
+<li><p><span class="math inline">\(F_x\)</span> <span class="math display">\[\boxed{F_x = (m_c + m_p)\ddot x_c + m_p \ell \left(\cos\theta_x\cos\theta_y\,\ddot \theta_x - \sin\theta_x\sin\theta_y\,\ddot \theta_y - \sin\theta_x\cos\theta_y\left(\dot\theta_x^2+\dot\theta_y^2\right) - 2\cos\theta_x\sin\theta_y\,\dot\theta_x\dot\theta_y\right)}\]</span></p></li>
+</ul>
+<p>This equation has the same form as <span class="math inline">\(\textbf{F}_x = (m_c+m_p)\ddot x_c + m_p\ddot x_p\)</span>, because <span class="math inline">\(\ddot x_p = \ddot x_c + \ell\frac{d^2}{dt^2}\left(\sin\theta_x\cos\theta_y\right)\)</span>.</p></li>
+<li><h4 id="y_c" class="anchored"><span class="math inline">\(y_c\)</span></h4>
+<ul>
+<li><p><span class="math inline">\(\frac{\partial L}{\partial \dot y_c}\)</span> <span class="math display">\[\boxed{(m_c + m_p)\dot y_c + m_p \ell \cos\theta_y\,\dot \theta_y}\]</span></p></li>
+<li><p><span class="math inline">\(\frac{d}{dt} \left( \frac{\partial L}{\partial \dot y_c}\right)\)</span> <span class="math display">\[\boxed{(m_c + m_p)\ddot y_c + m_p \ell \left(\cos\theta_y\,\ddot \theta_y - \sin\theta_y\,\dot\theta_y^2\right)}\]</span></p></li>
+<li><p><span class="math inline">\(\frac{\partial L}{\partial y_c}\)</span> <span class="math display">\[\boxed{0}\]</span></p></li>
+<li><p><span class="math inline">\(F_y\)</span> <span class="math display">\[\boxed{F_y = (m_c + m_p)\ddot y_c + m_p \ell \left(\cos\theta_y\,\ddot \theta_y - \sin\theta_y\,\dot\theta_y^2\right)}\]</span></p></li>
 </ul></li>
 <li><h4 id="theta_x" class="anchored"><span class="math inline">\(\theta_x\)</span></h4>
 <ul>
-<li><span class="math inline">\(\frac{\partial L}{\partial \dot \theta_x}\)</span> <span class="math display">\[m_p\ell\cos(\theta_x)\dot x_c+\dot{\theta_x}\left[m_p\ell^2\cos^2(\theta_x)+m_p\ell^2\sin^2(\theta_x)\cos^2(\theta_y)+ I\right] + m_p\ell^2\sin(\theta_x)\sin(\theta_y)\cos(\theta_x)\cos(\theta_y)\dot \theta_y\]</span></li>
+<li><p><span class="math inline">\(\frac{\partial L}{\partial \dot \theta_x}\)</span> <span class="math display">\[\boxed{m_p \ell \cos\theta_x\cos\theta_y\,\dot x_c + m_p\ell^2\cos^2\theta_y\,\dot\theta_x}\]</span></p></li>
+<li><p><span class="math inline">\(\frac{d}{dt}\left(\frac{\partial L}{\partial \dot \theta_x}\right)\)</span> <span class="math display">\[\boxed{m_p\ell\cos\theta_x\cos\theta_y\,\ddot x_c - m_p\ell\left(\sin\theta_x\cos\theta_y\,\dot\theta_x + \cos\theta_x\sin\theta_y\,\dot\theta_y\right)\dot x_c + m_p\ell^2\left(\cos^2\theta_y\,\ddot\theta_x - 2\cos\theta_y\sin\theta_y\,\dot\theta_x\dot\theta_y\right)}\]</span></p></li>
+<li><p><span class="math inline">\(\frac{\partial L}{\partial \theta_x}\)</span> <span class="math display">\[\boxed{-m_p\ell\left(\sin\theta_x\cos\theta_y\,\dot\theta_x + \cos\theta_x\sin\theta_y\,\dot\theta_y\right)\dot x_c + m_pg\ell\sin\theta_x\cos\theta_y}\]</span></p></li>
+<li><p><span class="math inline">\(F_{\theta_x}\)</span></p></li>
 </ul>
-<p>Since the LQR controller will be for stabalizing the system when near its unstable equalibrum, we can make the equatiosns simplier by applying small angle approximations such as:</p>
+<p>The <span class="math inline">\(\dot x_c\)</span> terms cancel. There is no external torque, so <span class="math inline">\(F_{\theta_x} = 0\)</span>: <span class="math display">\[\boxed{m_p\ell\cos\theta_x\cos\theta_y\,\ddot x_c + m_p\ell^2\cos^2\theta_y\,\ddot\theta_x - 2m_p\ell^2\cos\theta_y\sin\theta_y\,\dot\theta_x\dot\theta_y - m_pg\ell\sin\theta_x\cos\theta_y = 0}\]</span></p></li>
+<li><h4 id="theta_y" class="anchored"><span class="math inline">\(\theta_y\)</span></h4>
 <ul>
-<li><span class="math inline">\(\cos^2(\theta) \approx 1\)</span></li>
-<li><span class="math inline">\(\sin^2(\theta) \approx 0\)</span></li>
-<li><span class="math inline">\(\sin(\theta_x)\sin(\theta_y)\cos(\theta_x)\cos(\theta_y) \approx 0\)</span></li>
-<li><span class="math inline">\(\cos(\theta)\sin(\theta) \approx 0\)</span></li>
+<li><p><span class="math inline">\(\frac{\partial L}{\partial \dot \theta_y}\)</span> <span class="math display">\[\boxed{m_p \ell \left(-\sin\theta_x\sin\theta_y\,\dot x_c + \cos\theta_y\,\dot y_c\right) + m_p\ell^2\dot\theta_y}\]</span></p></li>
+<li><p><span class="math inline">\(\frac{d}{dt}\left(\frac{\partial L}{\partial \dot \theta_y}\right)\)</span> <span class="math display">\[\boxed{-m_p\ell\sin\theta_x\sin\theta_y\,\ddot x_c + m_p\ell\cos\theta_y\,\ddot y_c - m_p\ell\left(\cos\theta_x\sin\theta_y\,\dot\theta_x + \sin\theta_x\cos\theta_y\,\dot\theta_y\right)\dot x_c - m_p\ell\sin\theta_y\,\dot\theta_y\dot y_c + m_p\ell^2\ddot\theta_y}\]</span></p></li>
+<li><p><span class="math inline">\(\frac{\partial L}{\partial \theta_y}\)</span> <span class="math display">\[\boxed{-m_p\ell\left(\cos\theta_x\sin\theta_y\,\dot\theta_x + \sin\theta_x\cos\theta_y\,\dot\theta_y\right)\dot x_c - m_p\ell\sin\theta_y\,\dot\theta_y\dot y_c - m_p\ell^2\sin\theta_y\cos\theta_y\,\dot\theta_x^2 + m_pg\ell\cos\theta_x\sin\theta_y}\]</span></p></li>
+<li><p><span class="math inline">\(F_{\theta_y}\)</span></p></li>
 </ul>
-<p>producing: <span class="math display">\[\boxed{m_p\ell\cos(\theta_x)\dot x_c + \dot \theta_x\left[m_p\ell^2 +I\right]}\]</span></p>
-<ul>
-<li><p><span class="math inline">\(\frac{d}{dt}\left(\frac{\partial L}{\partial \dot \theta_x}\right)\)</span> <span class="math display">\[\boxed{m_p\ell\cos(\theta_x)\ddot x-m_p\ell\sin(\theta_x)\dot\theta_x\dot x+\ddot\theta_x[m_p\ell^2+I]}\]</span></p></li>
-<li><p><span class="math inline">\(\frac{\partial L}{\partial \theta_x}\)</span> <span class="math display">\[{m_p\left[(\dot x + \ell\cos(\theta_x)\dot\theta_x)\cdot(-\sin(\theta_x)\dot\theta_x) + (-\ell\sin(\theta_x)\cos(\theta_y)\dot\theta_x-\ell\sin(\theta_y)\cos(\theta_x)\dot\theta_y)\cdot(\ell\sin(\theta_y)\sin(\theta_x)\dot\theta_y-\ell\cos(\theta_x)\cos(\theta_y)\dot\theta_x)\right]+m_pg\ell\sin(\theta_x)\cos(\theta_y)}\]</span></p></li>
-</ul></li>
+<p>The <span class="math inline">\(\dot x_c\)</span> and <span class="math inline">\(\dot y_c\)</span> terms cancel. There is no external torque, so <span class="math inline">\(F_{\theta_y} = 0\)</span>: <span class="math display">\[\boxed{-m_p\ell\sin\theta_x\sin\theta_y\,\ddot x_c + m_p\ell\cos\theta_y\,\ddot y_c + m_p\ell^2\ddot\theta_y + m_p\ell^2\sin\theta_y\cos\theta_y\,\dot\theta_x^2 - m_pg\ell\cos\theta_x\sin\theta_y = 0}\]</span></p>
+<p>The two pole equations are not identical. The chart treats <span class="math inline">\(\theta_x\)</span> as a longitude and <span class="math inline">\(\theta_y\)</span> as a latitude, so the exact equations differ. The linearized equations below are symmetric.</p></li>
 </ul>
-<p><span class="math display">\[\boxed{-m_p \dot x \sin(\theta_x)\dot\theta_x}\]</span></p>
-<ul>
-<li><span class="math inline">\(F_{\theta_x}\)</span></li>
-</ul>
-<p>After applying small angle approximations, <span class="math display">\[\boxed{m_p\ell\cos(\theta_x)\ddot x_c+\ddot\theta_x[m_p\ell^2+I]+m_p\ell^2\sin(\theta_x)\cos(\theta_y)\dot\theta_x^2+m_pg\ell\sin(\theta_x)\cos(\theta_y)}\]</span></p>
-<p>The others can be derived by symetry.</p>
 </section>
 <section id="linearization" class="level3">
 <h3 class="anchored" data-anchor-id="linearization">Linearization</h3>
-<p>LQR requires that the dyanmics of system be modeled as the linear equation <span class="math inline">\(\dot{\textbf{x}} = A\textbf{x} + Bu\)</span> around a stable fixed point (the pendulum-up position) as <span class="math inline">\(\textbf{x}_{f} =[x_c, y_c, 0, 0]\)</span> and <span class="math inline">\(\dot{\textbf{x}}_f = [0, 0, 0, 0]\)</span> using only control inputs <span class="math inline">\(u = [F_x, F_y]\)</span>.</p>
+<p>LQR requires that the dynamics of the system be modeled as the linear equation <span class="math inline">\(\dot{\textbf{x}} = A\textbf{x} + Bu\)</span> around a fixed point. We use the pendulum-up position <span class="math inline">\(\textbf{x}_{f} =[x_c, y_c, 0, 0]\)</span>, <span class="math inline">\(\dot{\textbf{x}}_f = [0, 0, 0, 0]\)</span>, and the control inputs <span class="math inline">\(u = [F_x, F_y]\)</span>. This position is an unstable equilibrium; LQR stabilizes it.</p>
+<p>Apply the small-angle approximations:</p>
 <ul>
 <li><span class="math inline">\(\cos(\theta) \approx 1\)</span></li>
 <li><span class="math inline">\(\sin(\theta) \approx \theta\)</span></li>
-<li><span class="math inline">\(\theta^2 \approx 0\)</span></li>
+<li>a product of two small quantities <span class="math inline">\(\approx 0\)</span>, for example <span class="math inline">\(\theta^2\)</span>, <span class="math inline">\(\dot\theta^2\)</span>, and <span class="math inline">\(\theta\,\dot\theta\)</span></li>
 </ul>
-<p>We can pose the problem as a coupled equation and solve for <span class="math inline">\(F_x\)</span>.</p>
-<p><span class="math display">\[\begin{aligned} \ddot x_c (m_c + m_p) + m_p \ell \ddot \theta_x = F_{x}\\
-m_p \ell \ddot x_c + \ddot \theta_x (I + m_p\ell^2) + m_p g \ell \theta_x =  0 \end{aligned}\]</span></p>
-<p>Which we can solve as:</p>
-<p><span class="math display">\[\begin{bmatrix}
-m_c + m_p &amp; m_p\ell \\
-m_p\ell &amp; I + m_p\ell^2  \end{bmatrix}
-\begin{bmatrix}\ddot x_c \\ \ddot \theta_x \end{bmatrix} =
-\begin{bmatrix} F_x \\ -m_p g\ell\theta_x \end{bmatrix}\]</span></p>
-<p>The inverse of the <span class="math inline">\(M\)</span> matrix is defined as <span class="math inline">\(\frac{1}{D} M = M^{-1}\)</span> where <span class="math inline">\(D = det(M)\)</span></p>
-<p><span class="math display">\[\begin{bmatrix}\ddot x_c \\ \ddot \theta_x \end{bmatrix} = M^{-1}\begin{bmatrix} F_x \\ -m_p g\ell\theta_x \end{bmatrix} = \frac{1}{D}
-\begin{bmatrix} F_x(m_c + m_p) - \theta_x m_p^2 g \ell^2\\
-F_x m_p \ell - \theta_x (m_p g \ell )(I+ m_p \ell^2) \end{bmatrix}\]</span></p>
-<p>Revealing the coeffiicnets to be:</p>
-<p><span class="math display">\[ \ddot x_c = F_x \frac{m_c+m_p}{D} - \theta_x \frac{m_p^2 g \ell^2]}{D}\]</span></p>
-<p><span class="math display">\[\ddot \theta_x = F_x \frac{m_p \ell}{D} - \theta_x \frac{(m_p g \ell)(I + m_p\ell^2)}{D}\]</span></p>
+<p>Keep only the first-order terms. The exact equations above then give two identical planar cart-poles:</p>
+<p><span class="math display">\[\begin{aligned} (m_c + m_p)\ddot x_c + m_p \ell \ddot \theta_x = F_{x}\\
+m_p \ell \ddot x_c + m_p \ell^2 \ddot \theta_x - m_p g \ell \theta_x =  0 \end{aligned}
+\qquad\qquad
+\begin{aligned} (m_c + m_p)\ddot y_c + m_p \ell \ddot \theta_y = F_{y}\\
+m_p \ell \ddot y_c + m_p \ell^2 \ddot \theta_y - m_p g \ell \theta_y =  0 \end{aligned}\]</span></p>
+<p>Let <span class="math inline">\(J = m_p\ell^2\)</span>. The point-mass inertia is already included in <span class="math inline">\(T_p\)</span>, so <span class="math inline">\(J\)</span> is the complete pole inertia about the pivot. Each axis can be posed as a coupled equation and solved for the cart acceleration and the angular acceleration:</p>
+<p><span class="math display">\[\begin{bmatrix}(m_c + m_p) &amp; m_p \ell \\ m_p\ell &amp; J\end{bmatrix}
+\begin{bmatrix} \ddot x_c \\ \ddot\theta_x\end{bmatrix} =
+\begin{bmatrix} F_x \\ m_p g \ell \theta_x\end{bmatrix}\]</span></p>
+<p>where</p>
+<p><span class="math display">\[D = (m_c + m_p)J - (m_p\ell)^2\]</span></p>
+<p><span class="math display">\[\begin{bmatrix}\ddot x_c \\ \ddot \theta_x\end{bmatrix} = \frac{1}{D}\begin{bmatrix}JF_x - m_p^2\ell^2g\,\theta_x \\ -m_p\ell F_x + (m_c+m_p)m_pg\ell\,\theta_x\end{bmatrix}\]</span></p>
+<p>Revealing the coefficients to be:</p>
+<p><span class="math display">\[\ddot x_c = F_x \underbrace{\frac{J}{D}}_p - \theta_x \underbrace{\frac{m_p^2\ell^2g}{D}}_q\]</span></p>
+<p><span class="math display">\[\ddot \theta_x = -F_x \underbrace{\frac{m_p\ell}{D}}_r + \theta_x \underbrace{\frac{(m_c + m_p)(m_p\ell g)}{D}}_s\]</span></p>
+<p>The positive sign of <span class="math inline">\(s\)</span> shows that the upright position is unstable: a positive <span class="math inline">\(\theta_x\)</span> produces a positive angular acceleration. At this order the two axes decouple, so the coefficients for <span class="math inline">\(\ddot y_c\)</span> and <span class="math inline">\(\ddot \theta_y\)</span> are the same.</p>
 </section>
 <section id="lqr-cost-2-go" class="level3">
 <h3 class="anchored" data-anchor-id="lqr-cost-2-go">LQR / Cost-2-Go</h3>
+<p>LQR requires the system to be written as a linear equation</p>
+<p><span class="math display">\[\begin{bmatrix} \dot x_c \\ \dot y_c \\ \dot \theta_x \\ \dot \theta_y \\ \ddot x_c \\ \ddot y_c \\ \ddot \theta_x \\ \ddot \theta_y \end{bmatrix}  = A \begin{bmatrix} x_c \\  y_c \\  \theta_x \\  \theta_y \\  \dot x_c \\  \dot y_c \\  \dot \theta_x \\  \dot \theta_y \end{bmatrix} + B \begin{bmatrix} F_x \\ F_y\end{bmatrix}\]</span></p>
+<p>The non-trivial values of <span class="math inline">\(A\)</span> are:</p>
+<p><span class="math display">\[A = \begin{bmatrix}
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0  \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0  \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0  \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1  \\
+0 &amp; 0 &amp; -q &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0  \\
+0 &amp; 0 &amp; 0 &amp; -q &amp; 0 &amp; 0 &amp; 0 &amp; 0  \\
+0 &amp; 0 &amp; s &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0  \\
+0 &amp; 0 &amp; 0 &amp; s &amp; 0 &amp; 0 &amp; 0 &amp; 0  \\
+\end{bmatrix}\]</span></p>
+<p><span class="math display">\[B = \begin{bmatrix}
+0 &amp; 0 \\
+0 &amp; 0 \\
+0 &amp; 0 \\
+0 &amp; 0 \\
+p &amp; 0 \\
+0 &amp; p \\
+-r &amp; 0 \\
+0 &amp; -r \\
+\end{bmatrix}\]</span></p>
 </section>
 </section>
 
