@@ -7,45 +7,57 @@ format:
 
 ## Environment
 
-A frame of the system can be expressed as: 
-$\textbf{x} = \left[ x, y, \theta_x, \theta_y, \dot{x}, \dot y, \dot{\theta_x}, \dot{\theta_y} \right]$
+A state of the system can be expressed as:
+$\textbf{x} = \left[ x, y, \theta_x, \theta_y, \dot{x}, \dot y, \dot{\theta}_x, \dot{\theta}_y \right]$
 
 
 
 | Variable | Description | minVal | maxVal
 | ----- | ----- | --- | --- |
-| $x$ | carts position along x-axis | -2 | 2 |
-| $y$ | carts position along y-axis | -2 | 2 |
-| $\theta_x$ | poles angle along the x axis about the cart in radians | $0$ | $2\pi$ |
-| $\theta_y$ | poles angle along the y axis about the cart in radian | $0$ | $2\pi$|
-| $\dot x$ | be the linear velocity of cart along x-axis | $-\infty$ | $\infty$ |
-| $\dot y$ | be then linear velocity of cart along y-axis | $-\infty$ | $\infty$ |
-| $\dot \theta_x$ | the angular velocity of the pole along the x axis about the cart | $-\infty$ | $\infty$ |
-| $\dot \theta_y$ | the angular velocity of the pole along the y axis about the cart | $-\infty$ | $\infty$ |
+| $x$ | cart position along the x-axis | -10 | 10 |
+| $y$ | cart position along the y-axis | -10 | 10 |
+| $\theta_x$ | pole tilt toward $\pm x$ (rotation about the y-axis), in radians | $-\pi$ | $\pi$ |
+| $\theta_y$ | pole tilt toward $\pm y$ (rotation about the x-axis), in radians | $-\pi/2$ | $\pi/2$ |
+| $\dot x$ | linear velocity of the cart along the x-axis | $-\infty$ | $\infty$ |
+| $\dot y$ | linear velocity of the cart along the y-axis | $-\infty$ | $\infty$ |
+| $\dot \theta_x$ | angular velocity of the pole about the y-axis | $-\infty$ | $\infty$ |
+| $\dot \theta_y$ | angular velocity of the pole about the x-axis | $-\infty$ | $\infty$ |
+
+The two angles are a chart of the sphere. The chart is singular when the pole points along $\pm y$, so $\theta_y$ stays in $[-\pi/2, \pi/2]$ and $\theta_x$ stays in $(-\pi, \pi]$.
 
 
 ### Kinematics
 
-For the small-angle model used in the LQR linearization, the position and velocity of the mass at the end of the pendulum with a massless rod may be approximated as follows:
+The pole is a massless rod of length $\ell$ with a point mass $m_p$ at the tip. Let $\textbf{p}$ be the unit vector along the pole. This page uses the sign convention of the controllers: a positive $\theta_x$ moves the tip in the $+x$ direction, and a positive $\theta_y$ moves the tip in the $+y$ direction.
+
+$$\textbf{p} = \begin{bmatrix} \sin\theta_x\cos\theta_y \\ \sin\theta_y \\ \cos\theta_x\cos\theta_y \end{bmatrix}, \qquad \lVert \textbf{p} \rVert_2 = 1$$
+
+With this chart, the position and velocity of the mass at the end of the pendulum are:
 
 $$\textbf{x}_{p} = \begin{bmatrix} x_p \\ y_p \\ z_p \end{bmatrix} =
 \begin{bmatrix}
-x_c + \ell\sin(\theta_x) \\
-y_c + \ell\sin(\theta_y) \\
-\ell\cos(\theta_x)\cos(\theta_y)
+x_c + \ell\sin\theta_x\cos\theta_y \\
+y_c + \ell\sin\theta_y \\
+\ell\cos\theta_x\cos\theta_y
 \end{bmatrix}$$
 
 $$\dot{\textbf{x}}_{p} = \begin{bmatrix} \dot x_p \\ \dot y_p \\ \dot z_p
 \end{bmatrix}
 = \begin{bmatrix}
-\dot x_c + \ell \cos(\theta_x) \dot \theta_x \\
-\dot y_c + \ell \cos(\theta_y) \dot \theta_y \\
--\ell \sin{(\theta_x)}\cos{(\theta_y)} \dot\theta_x - \ell \sin{(\theta_y)}\cos{(\theta_x)} \dot \theta_y
+\dot x_c + \ell \left( \cos\theta_x\cos\theta_y\,\dot \theta_x - \sin\theta_x\sin\theta_y\,\dot \theta_y \right) \\
+\dot y_c + \ell \cos\theta_y\,\dot \theta_y \\
+-\ell \left( \sin\theta_x\cos\theta_y\,\dot\theta_x + \cos\theta_x\sin\theta_y\,\dot \theta_y \right)
 \end{bmatrix}$$
+
+The tip stays at distance $\ell$ from the pivot. This identity shows that the chart above is rigid:
+
+$$(x_p - x_c)^2 + (y_p - y_c)^2 + z_p^2 = \ell^2$$
+
+The mk-series MuJoCo models measure $\theta_y$ about the $+x$ axis. A positive MuJoCo angle moves the tip in the $-y$ direction, which is opposite to the convention on this page. The controller boundary therefore flips the sign of $\theta_y$ and $\dot\theta_y$ (see `controllers/lqr.py` and `envs/mujoco_interface.py`).
 
 ### Lagrangian
 
-The first step in creating an LQR controller is the linearize the systems equation of motions about a fixed point. We can calculate these equations using the Lagrangian which state that,
+The first step in the LQR design is to linearize the equations of motion about a fixed point. We can calculate these equations using the Lagrangian, which states that,
 $$L = T - V$$ 
 where $T$ and $V$ represent the kinetic and potential energy of the system respectively, obtaining:
 
@@ -55,94 +67,116 @@ $$T_p = \frac{1}{2} m_p(\dot x_p^2 + \dot y_p^2 + \dot z_p^2)$$
 $$T_c = \frac{1}{2} m_c(\dot x_c^2 + \dot y_c^2)$$
 $$T = T_p + T_c$$
 
-- #### Potential Energy
-The potential energy of the effect of gravity on the pendulum mass ($V = mgh)$ is the only source considered (energy of the cart is not considered).
+The point mass turns with the pole, so $T_p$ already contains the rotational kinetic energy. Do not add a second term of the form $\frac{1}{2}I(\dot\theta_x^2+\dot\theta_y^2)$ with $I = m_p\ell^2$. That term would count the same inertia two times.
 
-$$V = m_p g \ell \cos(\theta_x) \cos(\theta_y) $$
+Substitution of $\dot{\textbf{x}}_p$ into $T_p$ gives the exact kinetic energy:
+
+$$T = \frac{1}{2}(m_c+m_p)\left(\dot x_c^2+\dot y_c^2\right) + m_p\ell\left[\dot x_c\left(\cos\theta_x\cos\theta_y\,\dot\theta_x - \sin\theta_x\sin\theta_y\,\dot\theta_y\right) + \dot y_c\cos\theta_y\,\dot\theta_y\right] + \frac{1}{2}m_p\ell^2\left(\cos^2\theta_y\,\dot\theta_x^2 + \dot\theta_y^2\right)$$
+
+The last term is the rotational part. At small angles it reduces to $\frac{1}{2}m_p\ell^2(\dot\theta_x^2 + \dot\theta_y^2)$.
+
+- #### Potential Energy
+The potential energy of the effect of gravity on the pendulum mass ($V = mgh$) is the only source considered (energy of the cart is not considered). We take the pivot height as the zero level, so
+
+$$V = m_p g z_p = m_p g \ell \cos(\theta_x) \cos(\theta_y) $$
 
 - #### Full Equations
-$$L =\frac{1}{2} \left(m_p (\dot x_p^2 + \dot y_p^2 + \dot z_p^2) + m_c (\dot x_c^2 + \dot y_c^2)  \right) - m_p g \ell \cos(\theta_x) \cos(\theta_y) $$
+$$L =\frac{1}{2}(m_c+m_p)\left(\dot x_c^2+\dot y_c^2\right) + m_p\ell\left[\dot x_c\left(\cos\theta_x\cos\theta_y\,\dot\theta_x - \sin\theta_x\sin\theta_y\,\dot\theta_y\right) + \dot y_c\cos\theta_y\,\dot\theta_y\right] + \frac{1}{2}m_p\ell^2\left(\cos^2\theta_y\,\dot\theta_x^2 + \dot\theta_y^2\right) - m_p g \ell \cos(\theta_x) \cos(\theta_y) $$
 
 ### Equations of Motion 
-Using the methods of Lagrange, we can write the equation of motion using generalized coordinates. The dynamics equations ($Q_i$) for the generalized coordinates ($q_i$) is obtained from the equation:
+Using the methods of Lagrange, we can write the equation of motion using generalized coordinates. The dynamics equations ($Q_i$) for the generalized coordinates ($q_i$) are obtained from the equation:
 $$\frac{d}{dt}\left(\frac{\partial L}{\partial \dot q_i}\right) - \frac{\partial L}{\partial q_i} = Q_i$$
-In this system, the generalized coordinates chosen will be $q =\left[x_c , y_c,  \theta_x,  \theta_y \right]$.  Since there are variables in $L$ that are not in $q$, substituting them for their equivalent to contain only values from $q$ reveals:
+In this system, the generalized coordinates chosen will be $q =\left[x_c , y_c,  \theta_x,  \theta_y \right]$, and the generalized forces will be $Q =\left[F_x , F_y,  0,  0 \right]$. There are no torques on the pole; the cart forces are the only inputs.
 
-$$L = \frac{1}{2}\left( m_p\left[ \left(\dot x_c + \ell\cos(\theta_x)\dot \theta_x\right)^2 + \left(\dot y_c +\ell\cos(\theta_y)\dot\theta_y \right)^2 + \left(-\ell \sin{(\theta_x)}\cos{(\theta_y)} \dot\theta_x - \ell \sin{(\theta_y)}\cos{(\theta_x)} \dot \theta_y\right)^2\right] + m_c(\dot x_c^2 +\dot y_c^2)\right) -m_p g\ell\cos(\theta_x)\cos(\theta_y)$$
-
-
-The following is the grueling process of deriving all of the equations of motions and substitution to contain only generalized coordinates and constants.
+The partial derivatives below are exact for the Lagrangian above.
 
 - #### $x_c$
 
   - $\frac{\partial L}{\partial \dot x_c}$ 
-  $$\boxed{\dot x_c(m_c + m_p) + m_p \ell \cos(\theta_x)\dot \theta_x}$$
+  $$\boxed{(m_c + m_p)\dot x_c + m_p \ell \left(\cos\theta_x\cos\theta_y\,\dot \theta_x - \sin\theta_x\sin\theta_y\,\dot \theta_y\right)}$$
 
     
   - $\frac{d}{dt} \left( \frac{\partial L}{\partial \dot x_c}\right)$
-  $$\boxed{\ddot x_c( m_c + m_p)+ m_p \ell \left(\cos(\theta_x)\ddot \theta_x - \sin(\theta_x)\dot \theta_x^2 \right)}$$
+  $$\boxed{(m_c + m_p)\ddot x_c + m_p \ell \left(\cos\theta_x\cos\theta_y\,\ddot \theta_x - \sin\theta_x\sin\theta_y\,\ddot \theta_y - \sin\theta_x\cos\theta_y\left(\dot\theta_x^2+\dot\theta_y^2\right) - 2\cos\theta_x\sin\theta_y\,\dot\theta_x\dot\theta_y\right)}$$
 
   - $\frac{\partial L}{\partial x_c}$
   $$\boxed{0}$$
 
   - $F_x$
-  $$\boxed{F_x = \ddot x_c(m_c+m_p) + m_p\ell\left(\cos(\theta_x)\ddot \theta_x-\sin(\theta_x)\dot \theta_x^2 \right)}$$
+  $$\boxed{F_x = (m_c + m_p)\ddot x_c + m_p \ell \left(\cos\theta_x\cos\theta_y\,\ddot \theta_x - \sin\theta_x\sin\theta_y\,\ddot \theta_y - \sin\theta_x\cos\theta_y\left(\dot\theta_x^2+\dot\theta_y^2\right) - 2\cos\theta_x\sin\theta_y\,\dot\theta_x\dot\theta_y\right)}$$
+
+  This equation has the same form as $\textbf{F}_x = (m_c+m_p)\ddot x_c + m_p\ddot x_p$, because $\ddot x_p = \ddot x_c + \ell\frac{d^2}{dt^2}\left(\sin\theta_x\cos\theta_y\right)$.
+
+- #### $y_c$
+
+  - $\frac{\partial L}{\partial \dot y_c}$ 
+  $$\boxed{(m_c + m_p)\dot y_c + m_p \ell \cos\theta_y\,\dot \theta_y}$$
+
+  - $\frac{d}{dt} \left( \frac{\partial L}{\partial \dot y_c}\right)$
+  $$\boxed{(m_c + m_p)\ddot y_c + m_p \ell \left(\cos\theta_y\,\ddot \theta_y - \sin\theta_y\,\dot\theta_y^2\right)}$$
+
+  - $\frac{\partial L}{\partial y_c}$
+  $$\boxed{0}$$
+
+  - $F_y$
+  $$\boxed{F_y = (m_c + m_p)\ddot y_c + m_p \ell \left(\cos\theta_y\,\ddot \theta_y - \sin\theta_y\,\dot\theta_y^2\right)}$$
 
 
 
 - ####  $\theta_x$
+
   - $\frac{\partial L}{\partial \dot \theta_x}$
-  <!-- $$m_p\ell\cos(\theta_x)\dot x_c+\dot{\theta_x}\left[m_p\ell^2\cos^2(\theta_x)+m_p\ell^2\sin^2(\theta_x)\cos^2(\theta_y)+ I\right] + m_p\ell^2\sin(\theta_x)\sin(\theta_y)\cos(\theta_x)\cos(\theta_y)\dot \theta_y$$ -->
-
-
-
-  <!-- Since the LQR controller will be for stabilizing the system when near its unstable equilibrium, we can make the equations simpler by applying small angle approximations such as:
-    - $\cos^2(\theta) \approx 1$
-    - $\sin^2(\theta) \approx 0$
-    - $\sin(\theta_x)\sin(\theta_y)\cos(\theta_x)\cos(\theta_y) \approx 0$
-    - $\cos(\theta)\sin(\theta) \approx 0$ -->
-
-  <!-- producing:
-  $$\boxed{m_p\ell\cos(\theta_x)\dot x_c + \dot \theta_x\left[m_p\ell^2 +I\right]}$$ -->
-
-$$\boxed{m_p \ell \cos(\theta_x)\dot x_c + m_p\ell^2\dot\theta_x}$$
+  $$\boxed{m_p \ell \cos\theta_x\cos\theta_y\,\dot x_c + m_p\ell^2\cos^2\theta_y\,\dot\theta_x}$$
 
 
   - $\frac{d}{dt}\left(\frac{\partial L}{\partial \dot \theta_x}\right)$
-  $$\boxed{m_p\ell\cos(\theta_x)\ddot x_c-m_p\ell\sin(\theta_x)\dot\theta_x\dot x_c+m_p\ell^2\ddot\theta_x}$$
-
-
+  $$\boxed{m_p\ell\cos\theta_x\cos\theta_y\,\ddot x_c - m_p\ell\left(\sin\theta_x\cos\theta_y\,\dot\theta_x + \cos\theta_x\sin\theta_y\,\dot\theta_y\right)\dot x_c + m_p\ell^2\left(\cos^2\theta_y\,\ddot\theta_x - 2\cos\theta_y\sin\theta_y\,\dot\theta_x\dot\theta_y\right)}$$
 
   - $\frac{\partial L}{\partial \theta_x}$
-  $${m_p\left[(\dot x + \ell\cos(\theta_x)\dot\theta_x)\cdot(-\sin(\theta_x)\dot\theta_x) + (-\ell\sin(\theta_x)\cos(\theta_y)\dot\theta_x-\ell\sin(\theta_y)\cos(\theta_x)\dot\theta_y)\cdot(\ell\sin(\theta_y)\sin(\theta_x)\dot\theta_y-\ell\cos(\theta_x)\cos(\theta_y)\dot\theta_x)\right]+m_pg\ell\sin(\theta_x)\cos(\theta_y)}$$
-
-$$\boxed{m_pg\ell\sin(\theta_x)}$$
-
+  $$\boxed{-m_p\ell\left(\sin\theta_x\cos\theta_y\,\dot\theta_x + \cos\theta_x\sin\theta_y\,\dot\theta_y\right)\dot x_c + m_pg\ell\sin\theta_x\cos\theta_y}$$
 
   - $F_{\theta_x}$
 
-  After applying small angle approximations,
-  $$\boxed{m_p\ell\ddot x_c+m_p\ell^2\ddot\theta_x-m_pg\ell\theta_x = 0}$$
+  The $\dot x_c$ terms cancel. There is no external torque, so $F_{\theta_x} = 0$:
+  $$\boxed{m_p\ell\cos\theta_x\cos\theta_y\,\ddot x_c + m_p\ell^2\cos^2\theta_y\,\ddot\theta_x - 2m_p\ell^2\cos\theta_y\sin\theta_y\,\dot\theta_x\dot\theta_y - m_pg\ell\sin\theta_x\cos\theta_y = 0}$$
 
-The others can be derived by symmetry.
+- ####  $\theta_y$
+
+  - $\frac{\partial L}{\partial \dot \theta_y}$
+  $$\boxed{m_p \ell \left(-\sin\theta_x\sin\theta_y\,\dot x_c + \cos\theta_y\,\dot y_c\right) + m_p\ell^2\dot\theta_y}$$
+
+  - $\frac{d}{dt}\left(\frac{\partial L}{\partial \dot \theta_y}\right)$
+  $$\boxed{-m_p\ell\sin\theta_x\sin\theta_y\,\ddot x_c + m_p\ell\cos\theta_y\,\ddot y_c - m_p\ell\left(\cos\theta_x\sin\theta_y\,\dot\theta_x + \sin\theta_x\cos\theta_y\,\dot\theta_y\right)\dot x_c - m_p\ell\sin\theta_y\,\dot\theta_y\dot y_c + m_p\ell^2\ddot\theta_y}$$
+
+  - $\frac{\partial L}{\partial \theta_y}$
+  $$\boxed{-m_p\ell\left(\cos\theta_x\sin\theta_y\,\dot\theta_x + \sin\theta_x\cos\theta_y\,\dot\theta_y\right)\dot x_c - m_p\ell\sin\theta_y\,\dot\theta_y\dot y_c - m_p\ell^2\sin\theta_y\cos\theta_y\,\dot\theta_x^2 + m_pg\ell\cos\theta_x\sin\theta_y}$$
+
+  - $F_{\theta_y}$
+
+  The $\dot x_c$ and $\dot y_c$ terms cancel. There is no external torque, so $F_{\theta_y} = 0$:
+  $$\boxed{-m_p\ell\sin\theta_x\sin\theta_y\,\ddot x_c + m_p\ell\cos\theta_y\,\ddot y_c + m_p\ell^2\ddot\theta_y + m_p\ell^2\sin\theta_y\cos\theta_y\,\dot\theta_x^2 - m_pg\ell\cos\theta_x\sin\theta_y = 0}$$
+
+  The two pole equations are not identical. The chart treats $\theta_x$ as a longitude and $\theta_y$ as a latitude, so the exact equations differ. The linearized equations below are symmetric.
 
 ### Linearization
 
-LQR requires that the dynamics of system be modeled as the linear equation $\dot{\textbf{x}} = A\textbf{x} + Bu$ around a stable fixed point (the pendulum-up position) as $\textbf{x}_{f} =[x_c, y_c, 0, 0]$ and $\dot{\textbf{x}}_f = [0, 0, 0, 0]$ using only control inputs $u = [F_x, F_y]$.
+LQR requires that the dynamics of the system be modeled as the linear equation $\dot{\textbf{x}} = A\textbf{x} + Bu$ around a fixed point. We use the pendulum-up position $\textbf{x}_{f} =[x_c, y_c, 0, 0]$, $\dot{\textbf{x}}_f = [0, 0, 0, 0]$, and the control inputs $u = [F_x, F_y]$. This position is an unstable equilibrium; LQR stabilizes it.
 
+Apply the small-angle approximations:
 
   - $\cos(\theta) \approx 1$
   - $\sin(\theta) \approx \theta$
-  - $\theta^2 \approx 0$
+  - a product of two small quantities $\approx 0$, for example $\theta^2$, $\dot\theta^2$, and $\theta\,\dot\theta$
 
-For the massless rod and point-mass model, the point-mass rotational inertia is already included in the translational kinetic energy. Let $J = m_p\ell^2$.
+Keep only the first-order terms. The exact equations above then give two identical planar cart-poles:
 
-We can pose the problem as a coupled equation and solve for $\ddot x_c$ and $\ddot\theta_x$.
+$$\begin{aligned} (m_c + m_p)\ddot x_c + m_p \ell \ddot \theta_x = F_{x}\\
+m_p \ell \ddot x_c + m_p \ell^2 \ddot \theta_x - m_p g \ell \theta_x =  0 \end{aligned}
+\qquad\qquad
+\begin{aligned} (m_c + m_p)\ddot y_c + m_p \ell \ddot \theta_y = F_{y}\\
+m_p \ell \ddot y_c + m_p \ell^2 \ddot \theta_y - m_p g \ell \theta_y =  0 \end{aligned}$$
 
-$$\begin{aligned} \ddot x_c (m_c + m_p) + m_p \ell \ddot \theta_x = F_{x}\\
-m_p \ell \ddot x_c + J \ddot \theta_x - m_p g \ell \theta_x =  0 \end{aligned}$$
-
-Which can be solved by:
+Let $J = m_p\ell^2$. The point-mass inertia is already included in $T_p$, so $J$ is the complete pole inertia about the pivot. Each axis can be posed as a coupled equation and solved for the cart acceleration and the angular acceleration:
 
 $$\begin{bmatrix}(m_c + m_p) & m_p \ell \\ m_p\ell & J\end{bmatrix}
 \begin{bmatrix} \ddot x_c \\ \ddot\theta_x\end{bmatrix} =
@@ -152,7 +186,7 @@ where
 
 $$D = (m_c + m_p)J - (m_p\ell)^2$$
 
-$$\begin{bmatrix}\ddot x_c \\ \ddot \theta_x\end{bmatrix} = \frac{1}{D}\begin{bmatrix}JF_x - m_p^2\ell^2g\theta_x \\ -m_p\ell F_x + (m_c+m_p)m_pg\ell\theta_x\end{bmatrix}$$
+$$\begin{bmatrix}\ddot x_c \\ \ddot \theta_x\end{bmatrix} = \frac{1}{D}\begin{bmatrix}JF_x - m_p^2\ell^2g\,\theta_x \\ -m_p\ell F_x + (m_c+m_p)m_pg\ell\,\theta_x\end{bmatrix}$$
 
 Revealing the coefficients to be:
 
@@ -160,14 +194,13 @@ $$\ddot x_c = F_x \underbrace{\frac{J}{D}}_p - \theta_x \underbrace{\frac{m_p^2\
 
 $$\ddot \theta_x = -F_x \underbrace{\frac{m_p\ell}{D}}_r + \theta_x \underbrace{\frac{(m_c + m_p)(m_p\ell g)}{D}}_s$$
 
-Since the system is symmetric, the coefficients for $\ddot y_c$ and $\ddot \theta_y$ are the same.
+The positive sign of $s$ shows that the upright position is unstable: a positive $\theta_x$ produces a positive angular acceleration. At this order the two axes decouple, so the coefficients for $\ddot y_c$ and $\ddot \theta_y$ are the same.
 
 ### LQR / Cost-2-Go
-<!-- For notation, let $p = \frac{J}{D}$, $q = \frac{m_p^2\ell^2g}{D}$, $r = \frac{m_p\ell}{D}$ and $s = \frac{(m_c+m_p)(m_p\ell g)}{D}$ -->
 
 LQR requires the system to be written as a linear equation
 
-$$\begin{bmatrix} \dot x_c \\ \dot y_c \\ \dot \theta_x \\ \dot \theta_y \\ \ddot x_c \\ \ddot y_c \\ \ddot \theta_x \\ \ddot \theta_y \end{bmatrix}  = A \begin{bmatrix} x_c \\  y_c \\ \theta_x \\ \theta_y \\ \dot x_c \\ \dot y_c \\ \dot \theta_x \\ \dot \theta_y \end{bmatrix} + B \begin{bmatrix} F_x \\ F_y\end{bmatrix}$$
+$$\begin{bmatrix} \dot x_c \\ \dot y_c \\ \dot \theta_x \\ \dot \theta_y \\ \ddot x_c \\ \ddot y_c \\ \ddot \theta_x \\ \ddot \theta_y \end{bmatrix}  = A \begin{bmatrix} x_c \\  y_c \\  \theta_x \\  \theta_y \\  \dot x_c \\  \dot y_c \\  \dot \theta_x \\  \dot \theta_y \end{bmatrix} + B \begin{bmatrix} F_x \\ F_y\end{bmatrix}$$
 
 
 
