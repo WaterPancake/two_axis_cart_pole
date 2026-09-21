@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "two-axis-mc-pilco"
+version = "0.1.0"
+description = "MC-PILCO policy search for the two-axis MuJoCo cart-pole."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+dependencies = [
+    "mujoco>=3.7,<4",
+    "numpy>=2.0,<3",
+    "scipy>=1.13,<2",
+    "torch>=2.0,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+benchmark = [
+    "gymnasium>=1.0,<2",
+    "stable-baselines3>=2.5,<3",
+]
+
+[project.scripts]
+mc-pilco = "mc_pilco.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["mc_pilco*"]
+
+[tool.setuptools.package-data]
+"mc_pilco.web" = ["*.html", "*.css", "*.js"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+cache_dir = ".cache/pytest"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+cache-dir = ".cache/ruff"

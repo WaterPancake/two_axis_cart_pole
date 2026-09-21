@@ -1,0 +1,6 @@
+.cache/
+__pycache__/
+*.py[cod]
+*.egg-info/
+artifacts/*
+!artifacts/.gitkeep

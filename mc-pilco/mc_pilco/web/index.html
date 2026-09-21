@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#4d77cf">
+    <title>NumPy Cart-Pole Control Lab</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Control lab home">
+        <span class="numpy-mark" aria-hidden="true">
+          <i></i><i></i><i></i><i></i>
+        </span>
+        <span>NumPy</span>
+        <strong>control lab</strong>
+      </a>
+      <div class="runtime">
+        <span class="runtime-dot" id="runtimeDot"></span>
+        <span id="runtimeText">connecting</span>
+        <code id="simClock">t = 0.00 s</code>
+      </div>
+    </header>
+
+    <main>
+      <section class="intro">
+        <div>
+          <p class="eyebrow">TWO-AXIS CART-POLE / LIVE MUJOCO PROCESS</p>
+          <h1>Controller workbench</h1>
+        </div>
+        <p class="intro-copy">
+          Select a policy and initial condition. Hold WASD or arrow keys for
+          exclusive manual control; release every key to return authority.
+        </p>
+      </section>
+
+      <section class="lab-grid">
+        <aside class="panel controls-panel">
+          <div class="panel-heading">
+            <span class="index">01</span>
+            <div><p>CONFIGURATION</p><h2>Experiment</h2></div>
+          </div>
+
+          <label for="controllerSelect">Controller</label>
+          <div class="select-wrap">
+            <select id="controllerSelect" aria-label="Controller"></select>
+          </div>
+          <p class="field-note" id="controllerNote">Loading controllers...</p>
+
+          <label for="scenarioSelect">Initial scenario</label>
+          <div class="select-wrap">
+            <select id="scenarioSelect" aria-label="Initial scenario"></select>
+          </div>
+
+          <div class="button-row">
+            <button class="primary" id="resetButton" type="button">Reset state</button>
+            <button class="icon-button" id="pauseButton" type="button" aria-label="Pause simulation">
+              <span id="pauseIcon">II</span>
+            </button>
+          </div>
+
+          <div class="authority-card" id="authorityCard">
+            <span>AUTHORITY</span>
+            <strong id="authorityText">CONTROLLER</strong>
+            <small id="modeText">waiting for state</small>
+          </div>
+
+          <div class="key-section">
+            <div class="section-label"><span>MANUAL OVERRIDE</span><code>u in [-1, 1]^2</code></div>
+            <div class="key-layout" aria-label="Manual direction controls">
+              <button class="key key-w" data-key="w" type="button"><b>W</b><small>UP</small></button>
+              <button class="key key-a" data-key="a" type="button"><b>A</b><small>LEFT</small></button>
+              <button class="key key-s" data-key="s" type="button"><b>S</b><small>DOWN</small></button>
+              <button class="key key-d" data-key="d" type="button"><b>D</b><small>RIGHT</small></button>
+            </div>
+            <p class="field-note">Arrow keys mirror WASD. Diagonal input is norm-limited.</p>
+          </div>
+        </aside>
+
+        <section class="panel stage-panel">
+          <div class="stage-toolbar">
+            <div>
+              <p class="stage-kicker">WORLD FRAME</p>
+              <h2>Plant state</h2>
+            </div>
+            <div class="legend">
+              <span><i class="legend-cart"></i>cart</span>
+              <span><i class="legend-pole"></i>pole</span>
+              <span><i class="legend-target"></i>target</span>
+            </div>
+          </div>
+          <div class="canvas-wrap">
+            <canvas id="worldCanvas" aria-label="Two-axis cart-pole visualization"></canvas>
+            <div class="axis-tag axis-x">+x</div>
+            <div class="axis-tag axis-y">+y</div>
+            <div class="canvas-alert" id="canvasAlert" hidden>
+              <strong>LIMIT REACHED</strong>
+              <span>Reset the scenario to continue.</span>
+            </div>
+          </div>
+          <div class="stage-footer">
+            <code id="positionReadout">cart = [ 0.000, 0.000 ]</code>
+            <code id="actionReadout">ctrl = [ 0.000, 0.000 ]</code>
+          </div>
+        </section>
+
+        <aside class="panel telemetry-panel">
+          <div class="panel-heading">
+            <span class="index">02</span>
+            <div><p>OBSERVATION</p><h2>Telemetry</h2></div>
+          </div>
+          <div class="metric hero-metric">
+            <span>UPRIGHT ERROR</span>
+            <strong id="angleMetric">0.000</strong><small>rad</small>
+            <div class="meter"><i id="angleMeter"></i></div>
+          </div>
+          <div class="metric-grid">
+            <div class="metric"><span>TANGENT RATE</span><strong id="rateMetric">0.000</strong><small>rad/s</small></div>
+            <div class="metric"><span>CART SPEED</span><strong id="speedMetric">0.000</strong><small>m/s</small></div>
+            <div class="metric"><span>MAX |POSITION|</span><strong id="cartMetric">0.000</strong><small>m</small></div>
+            <div class="metric"><span>POLICY STEP</span><strong id="stepMetric">0</strong><small>index</small></div>
+          </div>
+          <div class="array-block">
+            <div class="section-label"><span>STATE VECTOR</span><code>shape=(8,)</code></div>
+            <pre id="stateArray">array([0., 0., 0., 0.,
+       0., 0., 0., 0.])</pre>
+          </div>
+          <div class="array-block compact">
+            <div class="section-label"><span>POLE DIRECTION</span><code>norm=1</code></div>
+            <pre id="directionArray">array([0., 0., 1.])</pre>
+          </div>
+        </aside>
+
+        <section class="panel trace-panel">
+          <div class="trace-copy">
+            <div class="panel-heading inline-heading">
+              <span class="index">03</span>
+              <div><p>LAST 10 SECONDS</p><h2>Response trace</h2></div>
+            </div>
+            <div class="trace-legend">
+              <span><i class="trace-angle"></i>upright error</span>
+              <span><i class="trace-position"></i>cart position</span>
+            </div>
+          </div>
+          <canvas id="traceCanvas" aria-label="Recent response history"></canvas>
+        </section>
+      </section>
+    </main>
+
+    <footer>
+      <span>MC-PILCO / MuJoCo / float64</span>
+      <code id="checkpointText">checkpoint: detecting...</code>
+    </footer>
+    <script src="/app.js" defer></script>
+  </body>
+</html>
